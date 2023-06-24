@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  name      String
+  phone     String    @id @unique
+  picture   String?
+  Message   Message[]
+  Tokens    Tokens?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  media     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [phone])
+}
+
+model Tokens {
+  id        String   @id @default(uuid())
+  count     Int      @default(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [phone])
+}
+
+model Whatsapp {
+  id        String   @id
+  name      String?
+  phone     String?  @unique
+  status    String   @default("OFFLINE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
