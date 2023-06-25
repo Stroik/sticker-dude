@@ -42,12 +42,8 @@ export default class Whatsapp extends Client {
         ],
       },
     });
-    this.id = `stickerdude-${id}`;
+    this.id = id;
     this.me = this.info !== undefined ? String(this.info.wid._serialized).replace('@c.us', '') : undefined;
-
-    this.on('authenticated', () => {
-      this.authenticated();
-    });
 
     this.on('ready', () => {
       this.ready();
@@ -62,28 +58,12 @@ export default class Whatsapp extends Client {
     });
   }
 
-  private async authenticated() {
-    this.status = 'AUTHENTICATED';
-    try {
-      await prisma.whatsapp.update({
-        where: {
-          id: this.id,
-        },
-        data: {
-          status: this.status,
-        },
-      });
-    } catch (error) {
-      console.log('AUTHENTICATED', error);
-    }
-  }
-
   private async ready() {
     this.status = 'READY';
     try {
       await prisma.whatsapp.update({
         where: {
-          id: this.id,
+          id: `stickerdude-${this.id}`,
         },
         data: {
           status: this.status,
@@ -100,7 +80,7 @@ export default class Whatsapp extends Client {
     try {
       await prisma.whatsapp.update({
         where: {
-          id: this.id,
+          id: `stickerdude-${this.id}`,
         },
         data: {
           status: this.status,
@@ -180,6 +160,7 @@ export default class Whatsapp extends Client {
 
   private async onMessage(message: Message) {
     const { from, body } = message;
+
     const phone = from.replace('@c.us', '') || from;
     const chat = await message.getChat();
 
@@ -187,6 +168,16 @@ export default class Whatsapp extends Client {
 
     const contact = await chat.getContact();
     const profilePicUrl = await contact.getProfilePicUrl();
+
+    if (body.startsWith('!dame')) {
+      const splitted = body.split(' ');
+      const amount = Number(splitted[1]);
+      const phoneToCharge = splitted[2];
+
+      await this.addToken(phoneToCharge, amount);
+      await chat.sendMessage(`Le diste ${amount} tokens a ${phoneToCharge}`);
+      return;
+    }
 
     let user = await userManager.getUserByPhone(phone);
     if (!user) {
@@ -197,6 +188,12 @@ export default class Whatsapp extends Client {
       });
 
       await user.welcome(chat);
+      return;
+    }
+
+    if (body.startsWith('!tokens')) {
+      const tokens = await user.getTokens();
+      await chat.sendMessage(`Tenes ${tokens} tokens`);
       return;
     }
 
@@ -241,6 +238,32 @@ export default class Whatsapp extends Client {
       await chat.sendMessage(`Te quedan ${remainingTokens} tokens`);
       await chat.delete();
     }
+    if (!message.hasMedia && body.length > 0) {
+      await message.react('🚬');
+      await chat.delete();
+    }
     return;
+  }
+
+  private async addToken(phone: string, token: number) {
+    try {
+      const moreTokens = await prisma.tokens.upsert({
+        where: {
+          userId: phone as string,
+        },
+        update: {
+          count: {
+            increment: token,
+          },
+        },
+        create: {
+          userId: phone as string,
+          count: token,
+        },
+      });
+      if (moreTokens) return true;
+    } catch (error) {
+      console.log('ADD_TOKEN', error);
+    }
   }
 }

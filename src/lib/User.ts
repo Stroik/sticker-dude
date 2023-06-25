@@ -29,8 +29,7 @@ export default class User {
 
       if (!user) return this.firstSave();
     };
-
-    check();
+    if (this.phone !== '') check();
   }
 
   public async firstSave() {
@@ -182,16 +181,21 @@ export default class User {
 
   public async welcome(chat: Chat) {
     try {
-      chat.sendStateTyping();
+      await chat.sendStateTyping();
       await timer(4000);
-      chat.clearState();
+      await chat.clearState();
 
       await chat.sendMessage(
-        `Que hacés ${this.name}! Cuchá, la cosa es simple.\nVos me mandás *imágenes, gifs o videos cortos* y yo te devuelvo un sticker.\n\nCada sticker sale 1 token. Te regalo 5 token, probá y si te gustá dame plata`
+        `Que hacés ${this.name}! Cuchá, la cosa es simple:\nVos me mandás *imágenes, gifs o videos cortos* y yo te devuelvo un sticker.\nCada sticker sale 1 token. Te regalo 5 token, probá y si te sirve hablamos`
       );
 
+      await chat.sendStateTyping();
+      await timer(4000);
+      await chat.clearState();
+
+      await chat.sendMessage('Se te acreditaron: *5 tokens*');
+
       await chat.delete();
-      await this.firstSave();
       return;
     } catch (error) {
       console.log(error);
